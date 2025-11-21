@@ -17,23 +17,23 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    phone: {
+    mobile: {
+      // renamed to match frontend input
       type: String,
       required: true,
     },
     role: {
       type: String,
-      enum: ["user", "owner", "deliveryBoy"],
+      enum: ["user", "owner", "deliveryBoy"], // lowercase
       required: true,
+    },
+    address: {
+      type: String,
+      trim: true,
     },
   },
   { timestamps: true }
 );
 
-// creating the usermodel
-
 const userModel = mongoose.model("Users", userSchema);
-
-// exporting the user model
-
 module.exports = userModel;

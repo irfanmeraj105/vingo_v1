@@ -3,49 +3,45 @@ const bcrypt = require("bcryptjs");
 const generateToken = require("../utils/token");
 
 // user signup
-
 const userSignup = async (req, res) => {
   try {
-    const { fullName, email, password, phone, role } = req.body;
+    const { fullName, email, password, mobile, role, address } = req.body;
 
-    // check if user is already registered in database
-
-    const findUser = await userModel.findOne({ email });
-
-    if (findUser) {
-      return res
-        .status(400)
-        .json({ message: "user already existed in the database" });
+    // Validate required fields
+    if (!fullName || !email || !password || !mobile || !role) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     if (password.length < 6) {
       return res
         .status(400)
-        .json({ message: "password must be more than 6 characters" });
+        .json({ message: "Password must be at least 6 characters" });
     }
 
-    if (phone.length < 11) {
+    if (mobile.length < 11) {
       return res
         .status(400)
-        .json({ message: "phone number must be of the 11 characters" });
+        .json({ message: "Phone number must be 11 digits" });
     }
 
-    // now hash the password
+    const findUser = await userModel.findOne({ email });
+    if (findUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // now create the new user in the db
     const user = await userModel.create({
       fullName,
       email,
       password: hashedPassword,
-      phone,
-      role,
+      mobile,
+      role: role.toLowerCase(), // ensure lowercase
+      address,
     });
-    // creating the token
+
     const token = await generateToken(user._id);
 
-    // send token into cookies
     res.cookie("token", token, {
       secure: false,
       sameSite: "strict",
@@ -55,40 +51,30 @@ const userSignup = async (req, res) => {
 
     return res
       .status(200)
-      .json({ message: "user registered successfully", user });
+      .json({ message: "User registered successfully", user });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "internal server error in signup" });
+    console.error("Signup Error:", error);
+    return res.status(500).json({ message: "Internal server error in signup" });
   }
 };
 
-// user sign in controller
+// user sign in
 const userSignIn = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // check if user is already registered in database
-
     const findUser = await userModel.findOne({ email });
-
     if (!findUser) {
-      return res
-        .status(400)
-        .json({ message: "user does not existed in the database" });
+      return res.status(400).json({ message: "User does not exist" });
     }
-
-    // now compare the hashed and user input password
 
     const comparePassword = await bcrypt.compare(password, findUser.password);
-
     if (!comparePassword) {
-      return res.status(400).json({ message: "wrong password" });
+      return res.status(400).json({ message: "Wrong password" });
     }
 
-    // creating the token
     const token = await generateToken(findUser._id);
 
-    // send token into cookies
     res.cookie("token", token, {
       secure: false,
       sameSite: "strict",
@@ -98,20 +84,18 @@ const userSignIn = async (req, res) => {
 
     return res
       .status(200)
-      .json({ message: "user sign in successfully", findUser });
+      .json({ message: "User signed in successfully", findUser });
   } catch (error) {
-    console.error(error);
+    console.error("SignIn Error:", error);
     return res
       .status(500)
-      .json({ message: "internal server error in sign in" });
+      .json({ message: "Internal server error in sign in" });
   }
 };
 
-// signout controller
-
+// signout
 const userSignOut = async (req, res) => {
   try {
-    // Clear the authentication token cookie
     res.clearCookie("token", {
       httpOnly: true,
       secure: false,
@@ -120,7 +104,7 @@ const userSignOut = async (req, res) => {
 
     return res.status(200).json({ message: "User signed out successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("SignOut Error:", error);
     return res
       .status(500)
       .json({ message: "Internal server error during sign out" });
